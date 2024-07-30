@@ -1,0 +1,11 @@
+[package]
+name = "rust-rocketmq-proxy"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = "1.39.2"
+tonic = "0.12.1"
+
+[build-dependencies]
+tonic-build = "0.12.1"
