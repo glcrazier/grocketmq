@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+prost = "0.13.1"
+prost-types = "0.13.1"
 tokio = "1.39.2"
 tonic = "0.12.1"
 

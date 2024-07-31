@@ -1,2 +1,2 @@
-# rust-rocketmq-proxy
-An experimental project which rewrites the proxy server of rocketmq
+# rust-rocketmq
+An experimental project which rewrites rocketmq in Rust.
