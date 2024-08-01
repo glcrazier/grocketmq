@@ -1411,6 +1411,608 @@ pub struct QueryOffsetResponse {
     #[prost(int64, tag = "2")]
     pub offset: i64,
 }
+/// Generated client implementations.
+pub mod messaging_service_client {
+    #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
+    use tonic::codegen::*;
+    use tonic::codegen::http::Uri;
+    /// For all the RPCs in MessagingService, the following error handling policies
+    /// apply:
+    ///
+    /// If the request doesn't bear a valid authentication credential, return a
+    /// response with common.status.code == `UNAUTHENTICATED`. If the authenticated
+    /// user is not granted with sufficient permission to execute the requested
+    /// operation, return a response with common.status.code == `PERMISSION_DENIED`.
+    /// If the per-user-resource-based quota is exhausted, return a response with
+    /// common.status.code == `RESOURCE_EXHAUSTED`. If any unexpected server-side
+    /// errors raise, return a response with common.status.code == `INTERNAL`.
+    #[derive(Debug, Clone)]
+    pub struct MessagingServiceClient<T> {
+        inner: tonic::client::Grpc<T>,
+    }
+    impl MessagingServiceClient<tonic::transport::Channel> {
+        /// Attempt to create a new client by connecting to a given endpoint.
+        pub async fn connect<D>(dst: D) -> Result<Self, tonic::transport::Error>
+        where
+            D: TryInto<tonic::transport::Endpoint>,
+            D::Error: Into<StdError>,
+        {
+            let conn = tonic::transport::Endpoint::new(dst)?.connect().await?;
+            Ok(Self::new(conn))
+        }
+    }
+    impl<T> MessagingServiceClient<T>
+    where
+        T: tonic::client::GrpcService<tonic::body::BoxBody>,
+        T::Error: Into<StdError>,
+        T::ResponseBody: Body<Data = Bytes> + Send + 'static,
+        <T::ResponseBody as Body>::Error: Into<StdError> + Send,
+    {
+        pub fn new(inner: T) -> Self {
+            let inner = tonic::client::Grpc::new(inner);
+            Self { inner }
+        }
+        pub fn with_origin(inner: T, origin: Uri) -> Self {
+            let inner = tonic::client::Grpc::with_origin(inner, origin);
+            Self { inner }
+        }
+        pub fn with_interceptor<F>(
+            inner: T,
+            interceptor: F,
+        ) -> MessagingServiceClient<InterceptedService<T, F>>
+        where
+            F: tonic::service::Interceptor,
+            T::ResponseBody: Default,
+            T: tonic::codegen::Service<
+                http::Request<tonic::body::BoxBody>,
+                Response = http::Response<
+                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                >,
+            >,
+            <T as tonic::codegen::Service<
+                http::Request<tonic::body::BoxBody>,
+            >>::Error: Into<StdError> + Send + Sync,
+        {
+            MessagingServiceClient::new(InterceptedService::new(inner, interceptor))
+        }
+        /// Compress requests with the given encoding.
+        ///
+        /// This requires the server to support it otherwise it might respond with an
+        /// error.
+        #[must_use]
+        pub fn send_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.inner = self.inner.send_compressed(encoding);
+            self
+        }
+        /// Enable decompressing responses.
+        #[must_use]
+        pub fn accept_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.inner = self.inner.accept_compressed(encoding);
+            self
+        }
+        /// Limits the maximum size of a decoded message.
+        ///
+        /// Default: `4MB`
+        #[must_use]
+        pub fn max_decoding_message_size(mut self, limit: usize) -> Self {
+            self.inner = self.inner.max_decoding_message_size(limit);
+            self
+        }
+        /// Limits the maximum size of an encoded message.
+        ///
+        /// Default: `usize::MAX`
+        #[must_use]
+        pub fn max_encoding_message_size(mut self, limit: usize) -> Self {
+            self.inner = self.inner.max_encoding_message_size(limit);
+            self
+        }
+        /// Queries the route entries of the requested topic in the perspective of the
+        /// given endpoints. On success, servers should return a collection of
+        /// addressable message-queues. Note servers may return customized route
+        /// entries based on endpoints provided.
+        ///
+        /// If the requested topic doesn't exist, returns `NOT_FOUND`.
+        /// If the specific endpoints is empty, returns `INVALID_ARGUMENT`.
+        pub async fn query_route(
+            &mut self,
+            request: impl tonic::IntoRequest<super::QueryRouteRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::QueryRouteResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/apache.rocketmq.v2.MessagingService/QueryRoute",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("apache.rocketmq.v2.MessagingService", "QueryRoute"),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /// Producer or consumer sends HeartbeatRequest to servers periodically to
+        /// keep-alive. Additionally, it also reports client-side configuration,
+        /// including topic subscription, load-balancing group name, etc.
+        ///
+        /// Returns `OK` if success.
+        ///
+        /// If a client specifies a language that is not yet supported by servers,
+        /// returns `INVALID_ARGUMENT`
+        pub async fn heartbeat(
+            &mut self,
+            request: impl tonic::IntoRequest<super::HeartbeatRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::HeartbeatResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/apache.rocketmq.v2.MessagingService/Heartbeat",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("apache.rocketmq.v2.MessagingService", "Heartbeat"),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /// Delivers messages to brokers.
+        /// Clients may further:
+        /// 1. Refine a message destination to message-queues which fulfills parts of
+        /// FIFO semantic;
+        /// 2. Flag a message as transactional, which keeps it invisible to consumers
+        /// until it commits;
+        /// 3. Time a message, making it invisible to consumers till specified
+        /// time-point;
+        /// 4. And more...
+        ///
+        /// Returns message-id or transaction-id with status `OK` on success.
+        ///
+        /// If the destination topic doesn't exist, returns `NOT_FOUND`.
+        pub async fn send_message(
+            &mut self,
+            request: impl tonic::IntoRequest<super::SendMessageRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::SendMessageResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/apache.rocketmq.v2.MessagingService/SendMessage",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("apache.rocketmq.v2.MessagingService", "SendMessage"),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /// Queries the assigned route info of a topic for current consumer,
+        /// the returned assignment result is decided by server-side load balancer.
+        ///
+        /// If the corresponding topic doesn't exist, returns `NOT_FOUND`.
+        /// If the specific endpoints is empty, returns `INVALID_ARGUMENT`.
+        pub async fn query_assignment(
+            &mut self,
+            request: impl tonic::IntoRequest<super::QueryAssignmentRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::QueryAssignmentResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/apache.rocketmq.v2.MessagingService/QueryAssignment",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "apache.rocketmq.v2.MessagingService",
+                        "QueryAssignment",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /// Receives messages from the server in batch manner, returns a set of
+        /// messages if success. The received messages should be acked or redelivered
+        /// after processed.
+        ///
+        /// If the pending concurrent receive requests exceed the quota of the given
+        /// consumer group, returns `UNAVAILABLE`. If the upstream store server hangs,
+        /// return `DEADLINE_EXCEEDED` in a timely manner. If the corresponding topic
+        /// or consumer group doesn't exist, returns `NOT_FOUND`. If there is no new
+        /// message in the specific topic, returns `OK` with an empty message set.
+        /// Please note that client may suffer from false empty responses.
+        ///
+        /// If failed to receive message from remote, server must return only one
+        /// `ReceiveMessageResponse` as the reply to the request, whose `Status` indicates
+        /// the specific reason of failure, otherwise, the reply is considered successful.
+        pub async fn receive_message(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ReceiveMessageRequest>,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::ReceiveMessageResponse>>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/apache.rocketmq.v2.MessagingService/ReceiveMessage",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "apache.rocketmq.v2.MessagingService",
+                        "ReceiveMessage",
+                    ),
+                );
+            self.inner.server_streaming(req, path, codec).await
+        }
+        /// Acknowledges the message associated with the `receipt_handle` or `offset`
+        /// in the `AckMessageRequest`, it means the message has been successfully
+        /// processed. Returns `OK` if the message server remove the relevant message
+        /// successfully.
+        ///
+        /// If the given receipt_handle is illegal or out of date, returns
+        /// `INVALID_ARGUMENT`.
+        pub async fn ack_message(
+            &mut self,
+            request: impl tonic::IntoRequest<super::AckMessageRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::AckMessageResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/apache.rocketmq.v2.MessagingService/AckMessage",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("apache.rocketmq.v2.MessagingService", "AckMessage"),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /// Forwards one message to dead letter queue if the max delivery attempts is
+        /// exceeded by this message at client-side, return `OK` if success.
+        pub async fn forward_message_to_dead_letter_queue(
+            &mut self,
+            request: impl tonic::IntoRequest<
+                super::ForwardMessageToDeadLetterQueueRequest,
+            >,
+        ) -> std::result::Result<
+            tonic::Response<super::ForwardMessageToDeadLetterQueueResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/apache.rocketmq.v2.MessagingService/ForwardMessageToDeadLetterQueue",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "apache.rocketmq.v2.MessagingService",
+                        "ForwardMessageToDeadLetterQueue",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /// PullMessage and ReceiveMessage RPCs serve a similar purpose,
+        /// which is to attempt to get messages from the server, but with different semantics.
+        pub async fn pull_message(
+            &mut self,
+            request: impl tonic::IntoRequest<super::PullMessageRequest>,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::PullMessageResponse>>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/apache.rocketmq.v2.MessagingService/PullMessage",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("apache.rocketmq.v2.MessagingService", "PullMessage"),
+                );
+            self.inner.server_streaming(req, path, codec).await
+        }
+        /// Update the consumption progress of the designated queue of the
+        /// consumer group to the remote.
+        pub async fn update_offset(
+            &mut self,
+            request: impl tonic::IntoRequest<super::UpdateOffsetRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::UpdateOffsetResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/apache.rocketmq.v2.MessagingService/UpdateOffset",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "apache.rocketmq.v2.MessagingService",
+                        "UpdateOffset",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /// Query the consumption progress of the designated queue of the
+        /// consumer group to the remote.
+        pub async fn get_offset(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetOffsetRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetOffsetResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/apache.rocketmq.v2.MessagingService/GetOffset",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("apache.rocketmq.v2.MessagingService", "GetOffset"),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /// Query the offset of the designated queue by the query offset policy.
+        pub async fn query_offset(
+            &mut self,
+            request: impl tonic::IntoRequest<super::QueryOffsetRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::QueryOffsetResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/apache.rocketmq.v2.MessagingService/QueryOffset",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("apache.rocketmq.v2.MessagingService", "QueryOffset"),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /// Commits or rollback one transactional message.
+        pub async fn end_transaction(
+            &mut self,
+            request: impl tonic::IntoRequest<super::EndTransactionRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::EndTransactionResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/apache.rocketmq.v2.MessagingService/EndTransaction",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "apache.rocketmq.v2.MessagingService",
+                        "EndTransaction",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /// Once a client starts, it would immediately establishes bi-lateral stream
+        /// RPCs with brokers, reporting its settings as the initiative command.
+        ///
+        /// When servers have need of inspecting client status, they would issue
+        /// telemetry commands to clients. After executing received instructions,
+        /// clients shall report command execution results through client-side streams.
+        pub async fn telemetry(
+            &mut self,
+            request: impl tonic::IntoStreamingRequest<Message = super::TelemetryCommand>,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::TelemetryCommand>>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/apache.rocketmq.v2.MessagingService/Telemetry",
+            );
+            let mut req = request.into_streaming_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("apache.rocketmq.v2.MessagingService", "Telemetry"),
+                );
+            self.inner.streaming(req, path, codec).await
+        }
+        /// Notify the server that the client is terminated.
+        pub async fn notify_client_termination(
+            &mut self,
+            request: impl tonic::IntoRequest<super::NotifyClientTerminationRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::NotifyClientTerminationResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/apache.rocketmq.v2.MessagingService/NotifyClientTermination",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "apache.rocketmq.v2.MessagingService",
+                        "NotifyClientTermination",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /// Once a message is retrieved from consume queue on behalf of the group, it
+        /// will be kept invisible to other clients of the same group for a period of
+        /// time. The message is supposed to be processed within the invisible
+        /// duration. If the client, which is in charge of the invisible message, is
+        /// not capable of processing the message timely, it may use
+        /// ChangeInvisibleDuration to lengthen invisible duration.
+        pub async fn change_invisible_duration(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ChangeInvisibleDurationRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::ChangeInvisibleDurationResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/apache.rocketmq.v2.MessagingService/ChangeInvisibleDuration",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "apache.rocketmq.v2.MessagingService",
+                        "ChangeInvisibleDuration",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+    }
+}
 /// Generated server implementations.
 pub mod messaging_service_server {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
