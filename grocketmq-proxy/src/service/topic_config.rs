@@ -65,12 +65,15 @@ impl TopicConfigManager {
         self.topic_config_table.get(topic_name)
     }
 
-    pub fn add_or_update_topic_config(
+    pub fn add_or_update_topic(
         &mut self,
-        name: impl Into<String>,
         config: TopicConfig,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        self.topic_config_table.insert(name.into(), config);
+        let topic_name = config.name().to_string();
+        if topic_name.is_empty() {
+            return Err("topic name is empty".into());
+        }
+        self.topic_config_table.insert(topic_name, config);
         self.persist()
     }
 
@@ -131,7 +134,7 @@ mod test {
             topic_type: TopicType::NORMAL,
         };
         topic_config_manager
-            .add_or_update_topic_config("test1", topic_config)
+            .add_or_update_topic(topic_config)
             .unwrap();
         fs::remove_file("./topic_config.json").unwrap();
         fs::remove_file("./topic_config.json.bak").unwrap();
@@ -147,7 +150,7 @@ mod test {
             topic_type: TopicType::NORMAL,
         };
         topic_config_manager
-            .add_or_update_topic_config("test1", topic)
+            .add_or_update_topic(topic)
             .unwrap();
         topic_config_manager.delete_topic("test1").unwrap();
         assert!(topic_config_manager.get_topic_config("test1").is_none());

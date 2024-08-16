@@ -1,4 +1,4 @@
-use rust_rocketmq::service::server::GrpcMessagingServer;
+use grocketmq_proxy::service::server::GrpcMessagingServer;
 
 #[tokio::main]
 async fn main() {

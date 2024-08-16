@@ -28,8 +28,6 @@ impl GrpcMessagingServer {
 #[derive(Debug, Default)]
 pub struct MessagingServer {}
 
-impl MessagingServer {}
-
 #[tonic::async_trait]
 impl MessagingService for MessagingServer {
     type TelemetryStream = tonic::Streaming<pb::TelemetryCommand>;
