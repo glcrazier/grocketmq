@@ -1,9 +1,4 @@
-use std::{
-    collections::HashMap,
-    io::{Error, ErrorKind},
-    net::SocketAddr,
-    time::Duration,
-};
+use std::{collections::HashMap, io::ErrorKind, net::SocketAddr, time::Duration};
 
 use tokio::{
     net::{TcpSocket, TcpStream},
@@ -12,7 +7,10 @@ use tokio::{
     time::timeout,
 };
 
-use crate::{common::command::Command, util};
+use crate::{
+    common::command::Command,
+    util::{vec_to_u32, Error},
+};
 
 #[derive(Debug)]
 pub struct Channel {
@@ -21,11 +19,9 @@ pub struct Channel {
     shutdown_tx: oneshot::Sender<()>,
 }
 
-type StdError = Box<dyn std::error::Error + Send + 'static>;
-
 struct Request {
     commmand: Command,
-    write_tx: oneshot::Sender<Result<(), StdError>>,
+    write_tx: oneshot::Sender<Result<(), Error>>,
     response_tx: oneshot::Sender<Command>,
 }
 
@@ -33,8 +29,10 @@ struct Request {
  * A channel sends and receives Command messages.
  */
 impl Channel {
-    pub async fn new(addr: &str) -> Result<Self, Box<dyn std::error::Error>> {
-        let addr = addr.parse()?;
+    pub async fn new(addr: &str) -> Result<Self, Error> {
+        let addr = addr
+            .parse()
+            .map_err(|_| Error::InvalidAddress(addr.to_string()))?;
         let (tx, mut rx) = mpsc::channel(1024);
         let command_sender: mpsc::Sender<Request> = tx;
         let mut response_table: HashMap<usize, oneshot::Sender<Command>> = HashMap::new();
@@ -57,7 +55,7 @@ impl Channel {
                                 response_table.insert(opaque, request.response_tx);
                             }
                         } else {
-                            let _ = request.write_tx.send(Err(Box::new(Error::new(ErrorKind::AddrNotAvailable, "no stream available"))));
+                            let _ = request.write_tx.send(Err(Error::StreamNotReady));
                         }
                     }
                     Some(_) = Channel::stream_readable(&stream) => {
@@ -96,21 +94,19 @@ impl Channel {
         }
     }
 
-    async fn new_stream(addr: SocketAddr) -> Result<TcpStream, Box<dyn std::error::Error>> {
+    async fn new_stream(addr: SocketAddr) -> Result<TcpStream, Error> {
         let socket = TcpSocket::new_v4()?;
         socket.set_nodelay(true)?;
         let stream = socket.connect(addr).await?;
         Ok(stream)
     }
 
-    async fn write(stream: &mut TcpStream, cmd: Command) -> Result<(), StdError> {
+    async fn write(stream: &mut TcpStream, cmd: Command) -> Result<(), Error> {
         let encoded_data = cmd.encode();
         let len = encoded_data.len();
         let mut written_bytes = 0;
         loop {
-            if let Err(e) = stream.writable().await {
-                return Err(Box::new(e));
-            }
+            stream.writable().await?;
             let raw_bytes = &encoded_data[written_bytes..len];
             match stream.try_write(raw_bytes) {
                 Ok(n) => {
@@ -123,40 +119,33 @@ impl Channel {
                     if e.kind() == std::io::ErrorKind::WouldBlock {
                         continue;
                     }
-                    return Err(Box::new(e));
+                    return Err(e.into());
                 }
             }
         }
         Ok(())
     }
 
-    async fn read(stream: &mut TcpStream, read_buf: &mut Vec<u8>) -> Result<Command, StdError> {
+    async fn read(stream: &mut TcpStream, read_buf: &mut Vec<u8>) -> Result<Command, Error> {
         loop {
             match stream.try_read_buf(read_buf) {
                 Ok(0) => {
-                    return Err(Box::new(Error::new(
-                        ErrorKind::UnexpectedEof,
-                        "unexpected eof",
-                    )));
+                    return Err(
+                        std::io::Error::new(ErrorKind::UnexpectedEof, "unexpected eof").into(),
+                    );
                 }
                 Ok(_) => {
                     if read_buf.len() < 4 {
                         continue;
                     }
                     let length_field = &read_buf[0..4];
-                    let length = util::vec_to_u32(length_field);
+                    let length = vec_to_u32(length_field);
                     if read_buf.len() < length as usize {
                         continue;
                     }
 
                     let buf: Vec<u8> = read_buf.drain(0..length as usize).collect();
-                    let result = Command::decode(&buf);
-                    match result {
-                        Ok(command) => return Ok(command),
-                        Err(_) => {
-                            return Err(Box::new(Error::new(ErrorKind::Other, "make it pass")))
-                        }
-                    }
+                    return Command::decode(&buf);
                 }
                 Err(e) => {
                     if e.kind() == ErrorKind::WouldBlock {

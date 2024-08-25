@@ -1,8 +1,11 @@
-use std::{collections::HashMap, sync::atomic::{AtomicUsize, Ordering}};
+use std::{
+    collections::HashMap,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
 use serde::{Deserialize, Serialize};
 
-use crate::util;
+use crate::util::{self, Error};
 
 static REQUEST_ID: AtomicUsize = AtomicUsize::new(0);
 
@@ -90,10 +93,11 @@ impl Command {
         result
     }
 
-    pub fn decode(data: &[u8]) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn decode(data: &[u8]) -> Result<Self, Error> {
         let length = util::vec_to_u32(&data);
         let header_length = util::vec_to_u32(&data[4..8]);
-        let header: Header = serde_json::from_slice(&data[8..8 + header_length as usize])?;
+        let header: Header = serde_json::from_slice(&data[8..8 + header_length as usize])
+            .map_err(|_| Error::DecodeCommandError)?;
         Ok(Self {
             header,
             body: Some(data[8 + header_length as usize..length as usize].to_vec()),
@@ -117,5 +121,5 @@ mod tests {
         assert_eq!(0, decoded.opaque());
         assert_eq!("value", decoded.get_property("test-key").unwrap());
         assert_eq!(vec![1, 2, 3], decoded.body().unwrap());
-    }    
+    }
 }
