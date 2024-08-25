@@ -2,6 +2,8 @@ use std::{collections::HashMap, sync::atomic::{AtomicUsize, Ordering}};
 
 use serde::{Deserialize, Serialize};
 
+use crate::util;
+
 static REQUEST_ID: AtomicUsize = AtomicUsize::new(0);
 
 #[derive(Serialize, Deserialize)]
@@ -88,18 +90,9 @@ impl Command {
         result
     }
 
-    fn vec_to_u32(data: &[u8]) -> u32 {
-        let mut result = 0;
-        result |= (data[0] as u32) << 24;
-        result |= (data[1] as u32) << 16;
-        result |= (data[2] as u32) << 8;
-        result |= data[3] as u32;
-        result
-    }
-
-    pub fn decode(data: Vec<u8>) -> Result<Self, Box<dyn std::error::Error>> {
-        let length = Self::vec_to_u32(&data);
-        let header_length = Self::vec_to_u32(&data[4..8]);
+    pub fn decode(data: &[u8]) -> Result<Self, Box<dyn std::error::Error>> {
+        let length = util::vec_to_u32(&data);
+        let header_length = util::vec_to_u32(&data[4..8]);
         let header: Header = serde_json::from_slice(&data[8..8 + header_length as usize])?;
         Ok(Self {
             header,
@@ -119,7 +112,7 @@ mod tests {
         command.set_body(vec![1, 2, 3]);
 
         let encoded = command.encode();
-        let decoded = Command::decode(encoded).unwrap();
+        let decoded = Command::decode(&encoded).unwrap();
         assert_eq!(1, decoded.code());
         assert_eq!(0, decoded.opaque());
         assert_eq!("value", decoded.get_property("test-key").unwrap());

@@ -12,12 +12,13 @@ use tokio::{
     time::timeout,
 };
 
-use crate::common::command::Command;
+use crate::{common::command::Command, util};
 
 #[derive(Debug)]
 pub struct Channel {
     command_sender: mpsc::Sender<Request>,
     timeout: Duration,
+    shutdown_tx: oneshot::Sender<()>,
 }
 
 type StdError = Box<dyn std::error::Error + Send + 'static>;
@@ -37,6 +38,9 @@ impl Channel {
         let (tx, mut rx) = mpsc::channel(1024);
         let command_sender: mpsc::Sender<Request> = tx;
         let mut response_table: HashMap<usize, oneshot::Sender<Command>> = HashMap::new();
+        let (shutdown_tx, mut shutdown_rx) = oneshot::channel();
+        let mut buf_read: Vec<u8> = Vec::with_capacity(4096);
+
         tokio::spawn(async move {
             let mut stream: Option<TcpStream> = None;
             loop {
@@ -57,6 +61,22 @@ impl Channel {
                         }
                     }
                     Some(_) = Channel::stream_readable(&stream) => {
+                        if let Some(stream) = stream.as_mut() {
+                            match Channel::read(stream, &mut buf_read).await {
+                                Ok(command) => {
+                                    if let Some(response_tx) = response_table.remove(&command.opaque()) {
+                                        let _ = response_tx.send(command);
+                                    }
+                                }
+                                Err(_) => {
+
+                                }
+                            }
+                        }
+
+                    }
+                    _ = &mut shutdown_rx => {
+                        break;
                     }
                 }
             }
@@ -64,6 +84,7 @@ impl Channel {
         Ok(Self {
             command_sender,
             timeout: Duration::from_secs(10),
+            shutdown_tx,
         })
     }
 
@@ -107,6 +128,43 @@ impl Channel {
             }
         }
         Ok(())
+    }
+
+    async fn read(stream: &mut TcpStream, read_buf: &mut Vec<u8>) -> Result<Command, StdError> {
+        loop {
+            match stream.try_read_buf(read_buf) {
+                Ok(0) => {
+                    return Err(Box::new(Error::new(
+                        ErrorKind::UnexpectedEof,
+                        "unexpected eof",
+                    )));
+                }
+                Ok(_) => {
+                    if read_buf.len() < 4 {
+                        continue;
+                    }
+                    let length_field = &read_buf[0..4];
+                    let length = util::vec_to_u32(length_field);
+                    if read_buf.len() < length as usize {
+                        continue;
+                    }
+
+                    let buf: Vec<u8> = read_buf.drain(0..length as usize).collect();
+                    let result = Command::decode(&buf);
+                    match result {
+                        Ok(command) => return Ok(command),
+                        Err(_) => {
+                            return Err(Box::new(Error::new(ErrorKind::Other, "make it pass")))
+                        }
+                    }
+                }
+                Err(e) => {
+                    if e.kind() == ErrorKind::WouldBlock {
+                        continue;
+                    }
+                }
+            }
+        }
     }
 
     pub async fn request(&self, cmd: Command) -> Result<Command, Box<dyn std::error::Error>> {
