@@ -18,6 +18,7 @@ tokio-stream.workspace = true
 thiserror.workspace = true
 gmq-remoting = { path = "../gmq-remoting" }
 anyhow.workspace = true
+tokio-util = {workspace = true, features = ["rt"]}
 
 [build-dependencies]
 tonic-build.workspace = true 

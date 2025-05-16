@@ -61,7 +61,7 @@ impl MQClient {
         }
     }
 
-    pub async fn query_route(&mut self, topic: &str) -> Result<TopicRouteData, Error> {
+    pub async fn query_route(&self, topic: &str) -> Result<TopicRouteData, Error> {
         if let Some(channel) = self.channel.as_ref() {
             let mut headers = HashMap::new();
             headers.insert("topic".to_string(), topic.to_string());
