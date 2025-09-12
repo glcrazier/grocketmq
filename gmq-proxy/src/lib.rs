@@ -5,3 +5,4 @@ pub mod pb;
 pub mod common;
 pub mod remoting;
 pub mod service;
+pub mod store;

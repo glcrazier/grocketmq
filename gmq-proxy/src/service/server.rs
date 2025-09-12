@@ -10,15 +10,14 @@ use tonic::transport::Server;
 use tonic::Response;
 
 use crate::pb::messaging_service_server::{MessagingService, MessagingServiceServer};
-use crate::pb::{self, ClientType, Code, Settings, Status, TelemetryCommand};
 use crate::pb::telemetry_command::Command;
+use crate::pb::{self, Code, Message, SendMessageResponse, Settings, TelemetryCommand};
 
 pub struct GrpcMessagingServer {}
 
 #[derive(Debug, Clone)]
 pub struct ClientSettingManager {
     client_settings_map: Arc<RwLock<HashMap<String, Settings>>>,
-
 }
 
 impl GrpcMessagingServer {
@@ -45,17 +44,17 @@ pub struct MessagingServer {
 }
 
 impl MessagingServer {
-
     pub fn new() -> Self {
         Self {
             setting_manager: ClientSettingManager::new(),
         }
     }
+
+    pub async fn send_messages(&self, messages: &Vec<Message>) {}
 }
 
 #[tonic::async_trait]
 impl MessagingService for MessagingServer {
-
     type TelemetryStream =
         Pin<Box<dyn Stream<Item = Result<pb::TelemetryCommand, tonic::Status>> + Send + 'static>>;
     type ReceiveMessageStream = tonic::Streaming<pb::ReceiveMessageResponse>;
@@ -78,14 +77,28 @@ impl MessagingService for MessagingServer {
         &self,
         _request: tonic::Request<pb::HeartbeatRequest>,
     ) -> Result<tonic::Response<pb::HeartbeatResponse>, tonic::Status> {
-        Err(tonic::Status::aborted("not implemented"))
+        Ok(Response::new(pb::HeartbeatResponse {
+            status: Some(pb::Status {
+                code: Code::Ok as i32,
+                message: "Ok".to_string(),
+            }),
+        }))
     }
 
     async fn send_message(
         &self,
-        _request: tonic::Request<pb::SendMessageRequest>,
+        request: tonic::Request<pb::SendMessageRequest>,
     ) -> Result<tonic::Response<pb::SendMessageResponse>, tonic::Status> {
-        Err(tonic::Status::aborted("not implemented"))
+        let body = request.get_ref();
+        self.send_messages(&body.messages).await;
+        let response = SendMessageResponse {
+            status: Some(pb::Status {
+                code: Code::Ok as i32,
+                message: Code::Ok.as_str_name().to_string(),
+            }),
+            entries: vec![],
+        };
+        Ok(tonic::Response::new(response))
     }
 
     async fn receive_message(
@@ -157,7 +170,7 @@ impl MessagingService for MessagingServer {
                             Command::Settings(settings) => {
                                 //TODO: add detail implementation.
                                 yield TelemetryCommand {
-                                    status: Some(Status {
+                                    status: Some(pb::Status {
                                         code: Code::Ok as i32,
                                         message: "ok".to_string(),
                                     }),
@@ -169,7 +182,7 @@ impl MessagingService for MessagingServer {
                             }
                         }
                     }
-               }
+                }
             }
             println!("Still working on this command!")
         };
