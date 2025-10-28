@@ -138,8 +138,16 @@ impl LogFile {
         Ok(self.write_pos)
     }
 
-    pub fn read_one(&self) -> Result<Message, anyhow::Error> {
-        Err(anyhow!("not implemented"))
+    pub fn read(&self, offset: usize) -> Result<Message, anyhow::Error> {
+        unsafe {
+            let read_ptr = self.mmap_file.as_ptr().add(offset);
+            let mut frame_length_buf: Vec<u8> = Vec::with_capacity(Message::BYTES_SIZE);
+            read_ptr.copy_to(frame_length_buf.as_mut_ptr(), Message::BYTES_SIZE);
+            let frame_length = usize::from_be_bytes(frame_length_buf.try_into().unwrap());
+            let mut content: Vec<u8> = Vec::with_capacity(frame_length);
+            read_ptr.copy_to(content.as_mut_ptr(), frame_length);
+            Message::decode(&content)
+        }
     }
 
     pub fn flush(&self) -> Result<(), anyhow::Error> {

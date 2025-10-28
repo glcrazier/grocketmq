@@ -51,7 +51,11 @@ async fn create_topic(
     State(state): State<Arc<TopicConfigManager>>,
     Json(request): Json<CreateTopic>,
 ) -> (StatusCode, Json<BaseResponse<()>>) {
-    let topic_config = TopicConfig::new(request.topic_name, request.queue_num);
+    let topic_config = TopicConfig::new(
+        request.topic_name,
+        request.queue_num,
+        gmq_proxy::service::topic_config::TopicType::NORMAL,
+    );
     let result = state.add_or_update_topic(topic_config);
     if result.is_err() {
         let error = BaseResponse {

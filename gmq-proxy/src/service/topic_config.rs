@@ -18,11 +18,16 @@ pub enum TopicType {
 pub struct TopicConfig {
     name: String,
     queue_num: u32,
+    topic_type: TopicType,
 }
 
 impl TopicConfig {
-    pub fn new(name: String, queue_num: u32) -> Self {
-        Self { name, queue_num }
+    pub fn new(name: String, queue_num: u32, topic_type: TopicType) -> Self {
+        Self {
+            name,
+            queue_num,
+            topic_type,
+        }
     }
 
     pub fn name(&self) -> &str {
@@ -31,6 +36,10 @@ impl TopicConfig {
 
     pub fn queue_num(&self) -> u32 {
         self.queue_num
+    }
+
+    pub fn topic_type(&self) -> TopicType {
+        self.topic_type.clone()
     }
 }
 
@@ -85,7 +94,7 @@ impl TopicConfigManager {
         Ok(())
     }
 
-    pub fn delete_topic(&mut self, topic_name: &str) -> Result<(), anyhow::Error> {
+    pub fn delete_topic(&self, topic_name: &str) -> Result<(), anyhow::Error> {
         if let Err(e) = self.db.delete(topic_name.as_bytes()) {
             return Err(anyhow::Error::new(e));
         }
@@ -105,10 +114,11 @@ mod test {
     #[test]
     fn test_add_or_update_config() {
         let _m = MTX.lock();
-        let mut topic_config_manager = TopicConfigManager::new("../target").unwrap();
+        let topic_config_manager = TopicConfigManager::new("../target").unwrap();
         let topic_config = TopicConfig {
             name: "test1".to_string(),
             queue_num: 3,
+            topic_type: TopicType::NORMAL,
         };
         topic_config_manager
             .add_or_update_topic(topic_config)
@@ -120,10 +130,11 @@ mod test {
     #[test]
     fn test_delete_topic() {
         let _m = MTX.lock();
-        let mut topic_config_manager = TopicConfigManager::new("../target").unwrap();
+        let topic_config_manager = TopicConfigManager::new("../target").unwrap();
         let topic = TopicConfig {
             name: "test1".to_string(),
             queue_num: 3,
+            topic_type: TopicType::NORMAL,
         };
         topic_config_manager.add_or_update_topic(topic).unwrap();
         topic_config_manager.delete_topic("test1").unwrap();

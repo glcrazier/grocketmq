@@ -18,7 +18,7 @@ tonic-build = "0.12.3"
 thiserror = "1.0.10"
 anyhow = "1.0.68"
 tokio-util = "0.7.13"
-rocksdb = "0.23.0"
+rocksdb = "0.24.0"
 axum = "0.8.4"
 clap = { version = "4.5.42", features = ["derive"] }
 toml = "0.9.5"

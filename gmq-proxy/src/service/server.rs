@@ -11,22 +11,34 @@ use tonic::Response;
 
 use crate::pb::messaging_service_server::{MessagingService, MessagingServiceServer};
 use crate::pb::telemetry_command::Command;
-use crate::pb::{self, Code, Message, SendMessageResponse, Settings, TelemetryCommand};
+use crate::pb::{
+    self, Broker, Code, Endpoints, Message, MessageQueue, Resource, SendMessageResponse, Settings,
+    Status, TelemetryCommand,
+};
+use crate::service::topic_config::TopicConfigManager;
 
-pub struct GrpcMessagingServer {}
+pub struct GrpcMessagingServer {
+    server_config: ServerConfig,
+}
 
 #[derive(Debug, Clone)]
 pub struct ClientSettingManager {
     client_settings_map: Arc<RwLock<HashMap<String, Settings>>>,
 }
 
+#[derive(Debug, Clone)]
+pub struct ServerConfig {
+    store_path: String,
+}
+
 impl GrpcMessagingServer {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(server_config: ServerConfig) -> Self {
+        Self { server_config }
     }
 
-    pub async fn start(&mut self) -> Result<(), Box<dyn Error>> {
-        let service_inner = MessagingServiceServer::new(MessagingServer::new());
+    pub async fn start(&mut self) -> Result<(), anyhow::Error> {
+        let service_inner =
+            MessagingServiceServer::new(MessagingServer::new(self.server_config.clone())?);
 
         let addr = "0.0.0.0:8081".parse().unwrap();
         Server::builder()
@@ -41,13 +53,48 @@ impl GrpcMessagingServer {
 #[derive(Debug)]
 pub struct MessagingServer {
     setting_manager: ClientSettingManager,
+    topic_config_manager: Arc<TopicConfigManager>,
 }
 
 impl MessagingServer {
-    pub fn new() -> Self {
-        Self {
+    pub fn new(server_config: ServerConfig) -> Result<Self, anyhow::Error> {
+        let topic_config_manager = TopicConfigManager::new(server_config.store_path.as_str())?;
+        Ok(Self {
             setting_manager: ClientSettingManager::new(),
+            topic_config_manager: Arc::new(topic_config_manager),
+        })
+    }
+
+    pub fn get_message_queues(
+        &self,
+        topic: &str,
+        endpoints: &Endpoints,
+    ) -> Option<Vec<MessageQueue>> {
+        let topic_config = self.topic_config_manager.get_topic_config(topic)?;
+        let mut message_queues: Vec<MessageQueue> =
+            Vec::with_capacity(topic_config.queue_num() as usize);
+        let mut i = 0;
+
+        while i < topic_config.queue_num() {
+            let queue = MessageQueue {
+                topic: Some(Resource {
+                    name: topic.to_string(),
+                    resource_namespace: "".to_string(),
+                }),
+                accept_message_types: vec![topic_config.topic_type() as i32],
+                permission: 6,
+                id: i as i32,
+                broker: Some(Broker {
+                    name: "broker".to_string(),
+                    id: 0,
+                    endpoints: Some(endpoints.clone()),
+                }),
+            };
+            i += 1;
+            message_queues.push(queue);
         }
+
+        Some(message_queues)
     }
 
     pub async fn send_messages(&self, messages: &Vec<Message>) {}
@@ -68,9 +115,25 @@ impl MessagingService for MessagingServer {
 
     async fn query_route(
         &self,
-        _request: tonic::Request<pb::QueryRouteRequest>,
+        request: tonic::Request<pb::QueryRouteRequest>,
     ) -> Result<tonic::Response<pb::QueryRouteResponse>, tonic::Status> {
-        Err(tonic::Status::aborted("not implemented"))
+        let resource = request.get_ref().topic.clone();
+        if resource.is_none() {
+            return Err(tonic::Status::invalid_argument("no topic presented"));
+        }
+        let topic = resource.unwrap().name;
+        let endpoints = request.get_ref().endpoints.clone().unwrap();
+        if let Some(message_queues) = self.get_message_queues(&topic, &endpoints) {
+            return Ok(tonic::Response::new(pb::QueryRouteResponse {
+                status: Some(Status {
+                    code: Code::Ok as i32,
+                    message: "ok".to_string(),
+                }),
+                message_queues,
+            }));
+        } else {
+            return Err(tonic::Status::not_found("topic route not found"));
+        }
     }
 
     async fn heartbeat(
