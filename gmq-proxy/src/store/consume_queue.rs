@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
-use anyhow::{anyhow, Error};
-use rocksdb::{WriteBatchWithTransaction, DB};
-use serde::{Deserialize, Serialize};
+use anyhow::anyhow;
+use rocksdb::{Direction, IteratorMode, WriteBatchWithTransaction, DB};
 
 use crate::store::db_get_usize;
 
@@ -17,12 +16,12 @@ pub struct ConsumeQueue {
     max_offset: usize,
     max_offset_key: String,
     min_offset_key: String,
+    offset_prefix: String,
 }
 
-const KEY_SEPARATOR: char = ';';
-const FLAG_NORMAL: usize = 1;
-const FLAG_MAX_OFFSET: usize = 2;
-const FLAG_MIN_OFFSET: usize = 0;
+const FLAG_NORMAL: u8 = 1;
+const FLAG_MAX_OFFSET: u8 = 2;
+const FLAG_MIN_OFFSET: u8 = 0;
 
 /*
  * A consume queue represents mapping between offset under one topic and commitlog offset.
@@ -38,6 +37,7 @@ impl ConsumeQueue {
         let min_offset_key = format!("{};{}", topic, FLAG_MIN_OFFSET);
         let max_offset = db_get_usize(&db, &max_offset_key, 0)?;
         let min_offset = db_get_usize(&db, &min_offset_key, 0)?;
+        let offset_prefix = format!("{};{};", topic, FLAG_NORMAL);
         Ok(ConsumeQueue {
             topic: topic.to_string(),
             db,
@@ -45,8 +45,10 @@ impl ConsumeQueue {
             min_offset_key,
             max_offset,
             min_offset,
+            offset_prefix,
         })
     }
+
     pub fn query_offset_list(
         &self,
         start_offset: usize,
@@ -58,27 +60,57 @@ impl ConsumeQueue {
             start_offset
         };
         let fixed_end_offset = if end_offset > self.max_offset {
-            self.max_offset
+            self.max_offset + 1
         } else {
             end_offset
         };
-        Err(anyhow!("not implemented."))
+        let count = fixed_end_offset - fixed_start_offset;
+        if count <= 0 {
+            return Err(anyhow!("invalid range to search"));
+        }
+        let start_key = self.build_offset_key(fixed_start_offset);
+        let mut iter = self
+            .db
+            .iterator(IteratorMode::From(&start_key, Direction::Forward));
+        let mut result = Vec::with_capacity(count);
+        let mut current = 0;
+        while current < count {
+            if let Some(Ok(data)) = iter.next() {
+                if let Ok(value) = String::from_utf8(data.1.to_vec()) {
+                    if let Ok(value) = ConsumeQueueOffset::decode(&value) {
+                        result.push(value);
+                    }
+                }
+            }
+            current += 1;
+        }
+
+        Ok(result)
     }
 
-    pub fn add_offset(&mut self, pivot: usize, log: ConsumeQueueOffset) {
-        let key = ConsumeQueue::build_offset_key(&self.topic, pivot);
+    pub fn add_offset(
+        &mut self,
+        offset: usize,
+        log: ConsumeQueueOffset,
+    ) -> Result<(), anyhow::Error> {
+        let key = self.build_offset_key(offset);
         let value = log.encode();
         let mut batch = WriteBatchWithTransaction::new();
         batch.put(key, value);
-        let result = self.db.write(batch);
-        if result.is_ok() {
-            self.max_offset += 1;
+        batch.put(self.max_offset_key.clone(), offset.to_be_bytes());
+        if let Err(e) = self.db.write(batch) {
+            return Err(anyhow::Error::new(e));
+        } else {
+            self.max_offset = offset;
+            return Ok(());
         }
     }
 
-    fn build_offset_key(topic: &str, offset: usize) -> String {
-        //TODO: offset should be encoded to bytes
-        format!("{};{};{}", topic, FLAG_NORMAL, offset)
+    fn build_offset_key(&self, offset: usize) -> Vec<u8> {
+        let mut result = Vec::new();
+        result.append(&mut self.offset_prefix.as_bytes().to_vec());
+        result.append(&mut offset.to_be_bytes().to_vec());
+        result
     }
 }
 
@@ -93,5 +125,33 @@ impl ConsumeQueueOffset {
 
     pub fn encode(&self) -> String {
         self.commitlog_offset.to_string()
+    }
+
+    pub fn new(commitlog_offset: usize) -> Self {
+        Self { commitlog_offset }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
+
+    #[test]
+    fn test_consume_queue() -> Result<(), anyhow::Error> {
+        let mut temp_dir = env::temp_dir();
+        temp_dir.push("test_rocksdb_consume_queue");
+        let db = DB::open_default(temp_dir.as_path())?;
+        let db = Arc::new(db);
+
+        let mut consume_queue = ConsumeQueue::new("test_topic", db)?;
+        consume_queue.add_offset(1, ConsumeQueueOffset::new(1))?;
+        consume_queue.add_offset(2, ConsumeQueueOffset::new(2))?;
+
+        let offset_list = consume_queue.query_offset_list(1, 4)?;
+        assert_eq!(2, offset_list.len());
+        let offset = offset_list.get(0);
+        println!("offset {:?}", offset.unwrap());
+        Ok(())
     }
 }
