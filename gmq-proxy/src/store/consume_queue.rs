@@ -10,13 +10,12 @@ pub struct ConsumeQueueOffset {
     commitlog_offset: usize,
 }
 pub struct ConsumeQueue {
-    topic: String,
     db: Arc<DB>,
     min_offset: usize,
     max_offset: usize,
-    max_offset_key: String,
-    min_offset_key: String,
-    offset_prefix: String,
+    max_offset_key: Vec<u8>,
+    min_offset_key: Vec<u8>,
+    offset_prefix: Vec<u8>,
 }
 
 const FLAG_NORMAL: u8 = 1;
@@ -32,14 +31,13 @@ const FLAG_MIN_OFFSET: u8 = 0;
  * 2. queue offset
  */
 impl ConsumeQueue {
-    pub fn new(topic: &str, db: Arc<DB>) -> Result<Self, anyhow::Error> {
-        let max_offset_key = format!("{};{}", topic, FLAG_MAX_OFFSET);
-        let min_offset_key = format!("{};{}", topic, FLAG_MIN_OFFSET);
+    pub fn new(topic_code: usize, db: Arc<DB>) -> Result<Self, anyhow::Error> {
+        let max_offset_key = ConsumeQueue::build_prefix_key(topic_code, FLAG_MAX_OFFSET );
+        let min_offset_key = ConsumeQueue::build_prefix_key(topic_code, FLAG_MIN_OFFSET);
         let max_offset = db_get_usize(&db, &max_offset_key, 0)?;
         let min_offset = db_get_usize(&db, &min_offset_key, 0)?;
-        let offset_prefix = format!("{};{};", topic, FLAG_NORMAL);
+        let offset_prefix = ConsumeQueue::build_prefix_key(topic_code, FLAG_NORMAL);
         Ok(ConsumeQueue {
-            topic: topic.to_string(),
             db,
             max_offset_key,
             min_offset_key,
@@ -47,6 +45,14 @@ impl ConsumeQueue {
             min_offset,
             offset_prefix,
         })
+    }
+
+    fn build_prefix_key(topic_code: usize, key_type: u8) -> Vec<u8> {
+        let mut result = Vec::new();
+        result.append(&mut topic_code.to_be_bytes().to_vec());
+        result.push(key_type);
+        result
+
     }
 
     pub fn query_offset_list(
@@ -108,7 +114,7 @@ impl ConsumeQueue {
 
     fn build_offset_key(&self, offset: usize) -> Vec<u8> {
         let mut result = Vec::new();
-        result.append(&mut self.offset_prefix.as_bytes().to_vec());
+        result.append(&mut self.offset_prefix.clone());
         result.append(&mut offset.to_be_bytes().to_vec());
         result
     }
@@ -144,7 +150,7 @@ mod tests {
         let db = DB::open_default(temp_dir.as_path())?;
         let db = Arc::new(db);
 
-        let mut consume_queue = ConsumeQueue::new("test_topic", db)?;
+        let mut consume_queue = ConsumeQueue::new(0, db)?;
         consume_queue.add_offset(1, ConsumeQueueOffset::new(1))?;
         consume_queue.add_offset(2, ConsumeQueueOffset::new(2))?;
 

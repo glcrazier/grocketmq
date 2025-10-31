@@ -5,7 +5,7 @@ use std::sync::Arc;
 pub mod consume_queue;
 pub mod store;
 
-fn db_get_usize(db: &Arc<DB>, key: &str, default_value: usize) -> Result<usize, anyhow::Error> {
+fn db_get_usize(db: &Arc<DB>, key: impl AsRef<[u8]>, default_value: usize) -> Result<usize, anyhow::Error> {
     let data = db.get(key)?;
     if let Some(data) = data {
         if data.len() != 8 {
