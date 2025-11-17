@@ -2,12 +2,7 @@ use anyhow::anyhow;
 use log::info;
 use memmap2::MmapMut;
 use prost::bytes::BufMut;
-use std::{
-    collections::HashMap,
-    fmt::{Debug, Display},
-    fs::{File, OpenOptions},
-    path::Path,
-};
+use std::{collections::HashMap, fmt::Debug, fs::OpenOptions, path::Path};
 
 #[derive(Debug, Clone)]
 pub struct Message {
@@ -138,12 +133,12 @@ impl LogFile {
         Ok(self.write_pos)
     }
 
-    pub fn read(&self, offset: usize) -> Result<Message, anyhow::Error> {
+    pub fn read(&self, offset: u64) -> Result<Message, anyhow::Error> {
         unsafe {
-            let read_ptr = self.mmap_file.as_ptr().add(offset);
+            let read_ptr = self.mmap_file.as_ptr().add(offset as usize);
             let mut frame_length_buf: Vec<u8> = Vec::with_capacity(Message::BYTES_SIZE);
             read_ptr.copy_to(frame_length_buf.as_mut_ptr(), Message::BYTES_SIZE);
-            let frame_length = usize::from_be_bytes(frame_length_buf.try_into().unwrap());
+            let frame_length = u64::from_be_bytes(frame_length_buf.try_into().unwrap()) as usize;
             let mut content: Vec<u8> = Vec::with_capacity(frame_length);
             read_ptr.copy_to(content.as_mut_ptr(), frame_length);
             Message::decode(&content)

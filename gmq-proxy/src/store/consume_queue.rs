@@ -7,7 +7,8 @@ use crate::store::db_get_u64;
 
 #[derive(Debug, Clone)]
 pub struct ConsumeQueueOffset {
-    commitlog_offset: u64,
+    file_index: u64,
+    in_file_offset: u64,
 }
 pub struct ConsumeQueue {
     db: Arc<DB>,
@@ -96,11 +97,9 @@ impl ConsumeQueue {
         let mut current = 0;
         while current < count {
             if let Some(Ok(data)) = iter.next() {
-                if let Ok(value) = String::from_utf8(data.1.to_vec()) {
-                    if let Ok(value) = ConsumeQueueOffset::decode(&value) {
+                if let Ok(value) = ConsumeQueueOffset::decode(data.1.to_vec()) {
                         result.push(value);
                     }
-                }
             }
             current += 1;
         }
@@ -135,20 +134,27 @@ impl ConsumeQueue {
 }
 
 impl ConsumeQueueOffset {
-    pub fn decode(raw_data: &str) -> Result<Self, anyhow::Error> {
-        let commitlog_offset = raw_data
-            .parse::<u64>()
-            .map_err(|e| anyhow!("Failed to parse commitlog offset '{}': {}", raw_data, e))?;
-
-        Ok(ConsumeQueueOffset { commitlog_offset })
+    pub fn decode(data: Vec<u8>) -> Result<Self, anyhow::Error> {
+        if data.len() != 16 {
+            return Err(anyhow!("invalid data length"));
+        }
+        let file_index = u64::from_be_bytes(data[0..8].try_into().unwrap());
+        let in_file_offset = u64::from_be_bytes(data[8..16].try_into().unwrap());
+        Ok(Self {
+            file_index,
+            in_file_offset
+        })
     }
 
-    pub fn encode(&self) -> String {
-        self.commitlog_offset.to_string()
+    pub fn encode(&self) -> Vec<u8> {
+        let mut result = Vec::with_capacity(16);
+        result.append(&mut self.file_index.to_be_bytes().to_vec());
+        result.append(&mut self.in_file_offset.to_be_bytes().to_vec());
+        result
     }
 
-    pub fn new(commitlog_offset: u64) -> Self {
-        Self { commitlog_offset }
+    pub fn new(file_index: u64, in_file_offset: u64) -> Self {
+        Self { file_index, in_file_offset }
     }
 }
 
@@ -165,8 +171,8 @@ mod tests {
         let db = Arc::new(db);
 
         let mut consume_queue = ConsumeQueue::new(0, db)?;
-        consume_queue.add_offset(1, ConsumeQueueOffset::new(1))?;
-        consume_queue.add_offset(2, ConsumeQueueOffset::new(2))?;
+        consume_queue.add_offset(1, ConsumeQueueOffset::new(1, 1))?;
+        consume_queue.add_offset(2, ConsumeQueueOffset::new(1, 2))?;
 
         let offset_list = consume_queue.query_offset_list(1, 4)?;
         assert_eq!(2, offset_list.len());
